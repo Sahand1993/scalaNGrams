@@ -1,7 +1,5 @@
 import java.io.File
 
-import Playground.{articles, fileLines, tokenizedLines}
-
 import scala.io.Source
 import scala.util.matching.Regex
 import scala.annotation.tailrec
@@ -37,12 +35,14 @@ object Playground extends App {
     }
   }
 
-  def splitIntoLines(article: String): List[String] = {
-    article.split("\n").toList
-  }
+//  def splitIntoLines(article: String): List[String] = {
+  //  article.split("\n").toList
+ // }
 
-  def tokenize(line: String): List[String] = {
-    line.split(" ")
+  def tokenize(article: String): List[String] = {
+    article
+      .map(c: Char => if () ) // TODO: map "\n" to " "
+      .split(" ")
       .map(_.toLowerCase)
       .map {
           case TOKEN(cleaned) => cleaned
@@ -50,14 +50,6 @@ object Playground extends App {
       }
       .filter(_ != null).toList
   }
-
-  val articles: List[String] = readArticles(fileLines.tail, List(""))
-  //articles.foreach(println)
-  val tokenizedLines: List[List[String]] = articles
-    .map(extractBody)
-    .filter(!_.equals(""))
-    .flatMap(article => splitIntoLines(article))
-    .map((line: String) => tokenize(line))
 
   /*
   Let's create some n-gram probabilities.
@@ -124,8 +116,7 @@ object Playground extends App {
     val tokenizedLines: List[List[String]] = articles
       .map(extractBody)
       .filter(!_.equals(""))
-      .flatMap(article => splitIntoLines(article))
-      .map((line: String) => tokenize(line))
+      .map((articleBody: String) => tokenize(articleBody))
 
     tokenizedLines.foldLeft(Map[String, mutable.SortedMap[String, Int]]())((acc, tokens) => addBigramsFrom(tokens, acc))
   }
