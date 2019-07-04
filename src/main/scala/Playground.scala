@@ -96,23 +96,23 @@ object Playground extends App {
       .filter(_ != null).toList
   }
 
-  def merge(map1: Map[String, mutable.SortedMap[String, Int]],
-            map2: Map[String, mutable.SortedMap[String, Int]]):
-  Map[String, mutable.SortedMap[String, Int]] = {
-    // TODO
-
+  def merge(bigrams1: Map[String, mutable.SortedMap[String, Int]],
+            bigrams2: Map[String, mutable.SortedMap[String, Int]]): Map[String, mutable.SortedMap[String, Int]] = {
+    bigrams2 ++ bigrams1
+      .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams2.getOrElse(entry1._1, mutable.SortedMap())
+        .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0)))))
   }
 
   def getBigramsFrom(path: String): Map[String, mutable.SortedMap[String, Int]] = {
-    val path = new File(path)
-    if (path.exists() && path.isDirectory) {
-      path
+    val entry: File = new File(path)
+    if (entry.exists() && entry.isDirectory) {
+      entry
         .listFiles
         .filter(file => file.isFile && file.getName.endsWith(".sgm"))
         .map(getBigramsFrom)
         .foldLeft(Map[String, mutable.SortedMap[String, Int]]())(merge)
-    } else if (path.exists && path.isFile) {
-      getBigramsFrom(path)
+    } else if (entry.exists && entry.isFile) {
+      getBigramsFrom(entry)
     } else
       throw new RuntimeException("Incorrect path")
   }
@@ -133,4 +133,5 @@ object Playground extends App {
   //create bigrams for one line
   val bigrams: Map[String, mutable.SortedMap[String, Int]] = getBigramsFrom("dataset/")
   println(bigrams)
+
 }
