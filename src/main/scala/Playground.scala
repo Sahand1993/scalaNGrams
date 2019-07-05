@@ -39,16 +39,49 @@ object Playground extends App {
   //  article.split("\n").toList
  // }
 
+  def getSentenceTokens(article: String): List[List[String]] = {
+    val separatedBySpace: List[String] = article
+      .replace('\n', ' ')
+      .replaceAll(" +", " ") // regex
+      .split(" ")
+      .toList
+
+    val splitAt: List[Int] = separatedBySpace.indices
+      .filter(i => ( i > 0 && endsWithDot(separatedBySpace(i - 1)) ) || i == 0)
+      .toList
+
+    groupBySentenceTokens(separatedBySpace, splitAt, List()).map(sentenceTokens => sentenceTokens.init :+ sentenceTokens.last.substring(0, sentenceTokens.last.length - 1))
+  }
+
+  @tailrec
+  def groupBySentenceTokens(tokens: List[String], splitAt: List[Int], sentences: List[List[String]]): List[List[String]] = {
+    if (splitAt.size <= 1) {
+      if (splitAt.size == 1) {
+        sentences :+ tokens.slice(splitAt.head, tokens.size)
+      } else {
+        sentences
+      }
+    }
+    else groupBySentenceTokens(tokens, splitAt.tail, sentences :+ tokens.slice(splitAt.head, splitAt.tail.head))
+  }
+
+  def endsWithDot(s: String): Boolean = {
+    s.endsWith(".")
+  }
+
   def tokenize(article: String): List[String] = {
-    article
-      .map(c: Char => if () ) // TODO: map "\n" to " "
+    val tokens = article
+      .map((c: Char) => if (c == '\n') ' ' else c)
       .split(" ")
       .map(_.toLowerCase)
       .map {
           case TOKEN(cleaned) => cleaned
           case _ => null
       }
-      .filter(_ != null).toList
+      .filter(_ != null)
+      .toList
+
+    tokens
   }
 
   /*
@@ -112,17 +145,13 @@ object Playground extends App {
   private def getBigramsFrom(path: File): Map[String, mutable.SortedMap[String, Int]] = {
     val file = Source.fromFile(path)
     val fileLines: List[String] = file.getLines().toList
-    val articles: List[String] = readArticles(fileLines.tail, List(""))
-    val tokenizedLines: List[List[String]] = articles
-      .map(extractBody)
-      .filter(!_.equals(""))
-      .map((articleBody: String) => tokenize(articleBody))
-
-    tokenizedLines.foldLeft(Map[String, mutable.SortedMap[String, Int]]())((acc, tokens) => addBigramsFrom(tokens, acc))
+    val articles: List[String] = readArticles(fileLines.tail, List())
+    val bodies: List[String] = articles.map(extractBody).filter(body => !body.isEmpty)
+    val sentenceTokens: List[List[String]] = bodies.flatMap(getSentenceTokens)
+    sentenceTokens.foldLeft(Map[String, mutable.SortedMap[String, Int]]())((acc, tokens) => addBigramsFrom(tokens, acc))
   }
 
-  //create bigrams for one line
+  // create bigrams for one line
   val bigrams: Map[String, mutable.SortedMap[String, Int]] = getBigramsFrom("dataset/")
   println(bigrams)
-
 }
