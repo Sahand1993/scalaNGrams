@@ -80,6 +80,15 @@ object Bigrams {
     sentenceTokens.foldLeft(Map[String, mutable.SortedMap[String, Int]]())((acc, tokens) => addBigramsFrom(tokens, acc))
   }
 
+  def getBigramsFrom(tokens: List[(String, String)]): BigramsMap = {
+    BigramsMap().addAll(tokens)
+  }
+  /*
+  [("hello", "there"), ("hello", "there"), ("hello", "you"), ("see", "you")]
+  =>
+  Map("hello" -> SortedMap("there" -> 2, "you" -> 1), "see" -> SortedMap("you" -> 1))
+   */
+
   def getBigrams(tokens: List[String]): List[(String, String)] = {
     tokens.indices.
       map(i => {
@@ -131,9 +140,9 @@ object Bigrams {
 
   def addBigramsFrom(tokens: List[String], bigrams: Map[String, mutable.SortedMap[String, Int]]): Map[String, mutable.SortedMap[String, Int]] = {
     var newBigrams = bigrams
-    val bigramsFromTokens: List[(String, String)] = Bigrams.getBigrams(tokens)
+    val bigramPairs: List[(String, String)] = Bigrams.getBigrams(tokens)
 
-    bigramsFromTokens.foreach(bigram => { // TODO: This code uses side effects to get the job done. Try to remove them.
+    bigramPairs.foreach(bigram => { // TODO: This code uses side effects to get the job done. Try to remove them.
       val currentFreqs: mutable.SortedMap[String, Int] = newBigrams.get(bigram._1)
         .map((map: mutable.SortedMap[String, Int]) => map)
         .getOrElse(mutable.SortedMap())
@@ -144,6 +153,7 @@ object Bigrams {
       val newFreqs = currentFreqs + (bigram._2 -> incrementedWordFreq)
       newBigrams = newBigrams - bigram._1 + (bigram._1 -> newFreqs)
     })
+
     newBigrams
   }
 }
