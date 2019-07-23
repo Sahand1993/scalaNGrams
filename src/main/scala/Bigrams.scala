@@ -5,9 +5,9 @@ import scala.collection.mutable
 import scala.io.Source
 import scala.util.matching.Regex
 
-case class Bigrams(bigrams: Map[String, mutable.SortedMap[String, Int]]) {
+case class Bigrams(bigrams: BigramsMap) {
 
-  def mergeIn(bigramsIn: Map[String, mutable.SortedMap[String, Int]]): Bigrams = {
+  def mergeIn(bigramsIn: BigramsMap): Bigrams = {
     Bigrams(Bigrams.merge(bigrams, bigramsIn))
   }
 
@@ -15,11 +15,11 @@ case class Bigrams(bigrams: Map[String, mutable.SortedMap[String, Int]]) {
     val entry: File = new File(path)
     if (entry.exists && entry.isDirectory) {
       println("Extracting bigrams from " + entry.getPath + "/")
-      val bigramsFromDir: Map[String, mutable.SortedMap[String, Int]] = entry
+      val bigramsFromDir: BigramsMap = entry
         .listFiles
         .filter(file => file.isFile && file.getName.endsWith(".sgm"))
         .map(Bigrams.getBigramsFrom)
-        .foldLeft(Map[String, mutable.SortedMap[String, Int]]())(Bigrams.merge)
+        .foldLeft(BigramsMap())(Bigrams.merge)
       val bigramsFromSubDirs: Bigrams = entry
         .listFiles
         .filter(entry => entry.isDirectory)
@@ -27,6 +27,7 @@ case class Bigrams(bigrams: Map[String, mutable.SortedMap[String, Int]]) {
         .foldLeft(Bigrams())(Bigrams.merge)
       bigramsFromSubDirs.mergeIn(bigramsFromDir)
     } else if (entry.exists && entry.isFile) {
+      println("Extracting bigrams from " + entry.getPath)
       Bigrams(Bigrams.getBigramsFrom(entry))
     } else
       throw new RuntimeException("Incorrect path")
@@ -40,11 +41,11 @@ case class Bigrams(bigrams: Map[String, mutable.SortedMap[String, Int]]) {
 object Bigrams {
 
   def fromPath(path: String): Bigrams = {
-    new Bigrams(Map[String, mutable.SortedMap[String, Int]]()).extractStatistics(path)
+    new Bigrams(BigramsMap()).extractStatistics(path)
   }
 
   def apply(): Bigrams = {
-    new Bigrams(Map())
+    new Bigrams(BigramsMap())
   }
 
   val BODY: Regex = "(?s).*<BODY>(.*)</BODY>(?s).*".r
@@ -60,34 +61,29 @@ object Bigrams {
     }
   }
 
-  def merge(bigrams1: Map[String, mutable.SortedMap[String, Int]],
-                    bigrams2: Map[String, mutable.SortedMap[String, Int]]): Map[String, mutable.SortedMap[String, Int]] = {
-    bigrams2 ++ bigrams1
-      .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams2.getOrElse(entry1._1, mutable.SortedMap[String, Int]())
-        .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0)))))
+  def merge(bigrams1: BigramsMap, bigrams2: BigramsMap): BigramsMap = { // TODO: Change to more efficient algorithm
+    BigramsMap(
+      bigrams1.map ++ bigrams2.map
+        .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams1.getOrElse(entry1._1, mutable.SortedMap[String, Int]())
+          .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0))))))
   }
 
   def merge(bigrams1: Bigrams, bigrams2: Bigrams): Bigrams = {
-    new Bigrams(merge(bigrams1.bigrams, bigrams2.bigrams))
+    Bigrams(merge(bigrams1.bigrams, bigrams2.bigrams))
   }
 
-  def getBigramsFrom(path: File): Map[String, mutable.SortedMap[String, Int]] = {
+  def getBigramsFrom(path: File): BigramsMap = {
     val file = Source.fromFile(path)
     val fileLines: List[String] = file.getLines().toList
     val articles: List[String] = Bigrams.readArticles(fileLines.tail, List())
     val bodies: List[String] = articles.map(extractBody).filter(body => !body.isEmpty)
     val sentenceTokens: List[List[String]] = bodies.flatMap(getSentenceTokens)
-    sentenceTokens.foldLeft(Map[String, mutable.SortedMap[String, Int]]())((acc, tokens) => addBigramsFrom(tokens, acc))
+    sentenceTokens.foldLeft(BigramsMap())((acc, tokens) => addBigramsFrom(tokens, acc))
   }
 
   def getBigramsFrom(tokens: List[(String, String)]): BigramsMap = {
     BigramsMap().addAll(tokens)
   }
-  /*
-  [("hello", "there"), ("hello", "there"), ("hello", "you"), ("see", "you")]
-  =>
-  Map("hello" -> SortedMap("there" -> 2, "you" -> 1), "see" -> SortedMap("you" -> 1))
-   */
 
   def getBigrams(tokens: List[String]): List[(String, String)] = {
     tokens.indices.
@@ -138,22 +134,9 @@ object Bigrams {
     else groupBySentenceTokens(tokens, splitAt.tail, sentences :+ tokens.slice(splitAt.head, splitAt.tail.head))
   }
 
-  def addBigramsFrom(tokens: List[String], bigrams: Map[String, mutable.SortedMap[String, Int]]): Map[String, mutable.SortedMap[String, Int]] = {
-    var newBigrams = bigrams
+  def addBigramsFrom(tokens: List[String], oldBigrams: BigramsMap): BigramsMap = {
     val bigramPairs: List[(String, String)] = Bigrams.getBigrams(tokens)
-
-    bigramPairs.foreach(bigram => { // TODO: This code uses side effects to get the job done. Try to remove them.
-      val currentFreqs: mutable.SortedMap[String, Int] = newBigrams.get(bigram._1)
-        .map((map: mutable.SortedMap[String, Int]) => map)
-        .getOrElse(mutable.SortedMap())
-      val incrementedWordFreq = currentFreqs.get(bigram._2)
-        .map(freq => freq + 1)
-        .getOrElse(1)
-
-      val newFreqs = currentFreqs + (bigram._2 -> incrementedWordFreq)
-      newBigrams = newBigrams - bigram._1 + (bigram._1 -> newFreqs)
-    })
-
-    newBigrams
+    val newBigrams = getBigramsFrom(bigramPairs)
+    merge(oldBigrams, newBigrams)
   }
 }
