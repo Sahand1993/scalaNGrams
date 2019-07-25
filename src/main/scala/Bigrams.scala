@@ -5,11 +5,7 @@ import scala.collection.mutable
 import scala.io.Source
 import scala.util.matching.Regex
 
-case class Bigrams(bigrams: BigramsMap) {
-
-  def mergeIn(bigramsIn: BigramsMap): Bigrams = {
-    Bigrams(Bigrams.merge(bigrams, bigramsIn))
-  }
+case class Bigrams(bigrams: BigramsMap) { // TODO: Find out why so slow
 
   def extractStatistics(path: String): Bigrams = {
     val entry: File = new File(path)
@@ -27,33 +23,36 @@ case class Bigrams(bigrams: BigramsMap) {
         .foldLeft(Bigrams())(Bigrams.merge)
       bigramsFromSubDirs.mergeIn(bigramsFromDir)
     } else if (entry.exists && entry.isFile) {
-      println("Extracting bigrams from " + entry.getPath)
       Bigrams(Bigrams.getBigramsFrom(entry))
     } else
-      throw new RuntimeException("Incorrect path")
+    throw new RuntimeException("Incorrect path")
   }
 
   def getFreqs(word: String): Option[mutable.SortedMap[String, Int]] = {
     bigrams.get(word)
   }
+
+  def mergeIn(bigramsIn: BigramsMap): Bigrams = {
+    Bigrams(Bigrams.merge(bigrams, bigramsIn))
+  }
 }
 
 object Bigrams {
 
-  def fromPath(path: String): Bigrams = {
-    new Bigrams(BigramsMap()).extractStatistics(path)
-  }
+  val BODY: Regex = "(?s).*<BODY>(.*)</BODY>(?s).*".r
 
   def apply(): Bigrams = {
     new Bigrams(BigramsMap())
   }
 
-  val BODY: Regex = "(?s).*<BODY>(.*)</BODY>(?s).*".r
+  def fromPath(path: String): Bigrams = {
+    new Bigrams(BigramsMap()).extractStatistics(path)
+  }
 
   // Return a list with the markup for each article
   @tailrec
   def readArticles(remainingLines: List[String], acc: List[String]): List[String] = {
-    if (remainingLines.size == 1) acc
+    if (remainingLines.size == 1) (acc.head + "\n" + remainingLines.head) +: acc.tail
     else {
       val nextLine = remainingLines.head
       if (nextLine.startsWith("<REUTERS ")) readArticles(remainingLines.tail, nextLine +: acc)
@@ -61,18 +60,25 @@ object Bigrams {
     }
   }
 
-  def merge(bigrams1: BigramsMap, bigrams2: BigramsMap): BigramsMap = { // TODO: Change to more efficient algorithm
-    BigramsMap(
-      bigrams1.map ++ bigrams2.map
-        .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams1.getOrElse(entry1._1, mutable.SortedMap[String, Int]())
-          .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0))))))
+  def addBigramsFrom(tokens: List[String], oldBigrams: BigramsMap): BigramsMap = {
+    val bigramPairs: List[(String, String)] = Bigrams.getBigrams(tokens)
+    val newBigrams: BigramsMap = getBigramsFrom(bigramPairs)
+    merge(oldBigrams, newBigrams)
   }
 
   def merge(bigrams1: Bigrams, bigrams2: Bigrams): Bigrams = {
     Bigrams(merge(bigrams1.bigrams, bigrams2.bigrams))
   }
 
+  def merge(bigrams1: BigramsMap, bigrams2: BigramsMap): BigramsMap = {
+    BigramsMap(
+    bigrams1.map ++ bigrams2.map
+      .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams1.getOrElse(entry1._1, mutable.SortedMap[String, Int]())
+      .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0))))))
+  }
+
   def getBigramsFrom(path: File): BigramsMap = {
+    println("Extracting bigrams from " + path.getPath)
     val file = Source.fromFile(path)
     val fileLines: List[String] = file.getLines().toList
     val articles: List[String] = Bigrams.readArticles(fileLines.tail, List())
@@ -87,7 +93,7 @@ object Bigrams {
 
   def getBigrams(tokens: List[String]): List[(String, String)] = {
     tokens.indices.
-      map(i => {
+    map(i => {
         if (i < tokens.size - 1) (tokens(i), tokens(i + 1))
         else null
       })
@@ -119,7 +125,12 @@ object Bigrams {
       .filter(i => i > 0 && separatedBySpace(i - 1).endsWith(".") || i == 0)
       .toList
 
-    groupBySentenceTokens(separatedBySpace, splitAt, List()).map(sentenceTokens => sentenceTokens.init :+ sentenceTokens.last.substring(0, sentenceTokens.last.length - 1))
+    groupBySentenceTokens(
+    separatedBySpace,
+    splitAt,
+    List())
+      .map(sentenceTokens => sentenceTokens.init :+ sentenceTokens.last.substring(0, sentenceTokens.last.length - 1))
+      .map(sentenceTokens => sentenceTokens.map(sentenceToken => sentenceToken.toLowerCase))
   }
 
   @tailrec
@@ -134,9 +145,4 @@ object Bigrams {
     else groupBySentenceTokens(tokens, splitAt.tail, sentences :+ tokens.slice(splitAt.head, splitAt.tail.head))
   }
 
-  def addBigramsFrom(tokens: List[String], oldBigrams: BigramsMap): BigramsMap = {
-    val bigramPairs: List[(String, String)] = Bigrams.getBigrams(tokens)
-    val newBigrams = getBigramsFrom(bigramPairs)
-    merge(oldBigrams, newBigrams)
-  }
 }
