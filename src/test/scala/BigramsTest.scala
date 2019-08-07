@@ -2,15 +2,14 @@ import java.io.File
 
 import org.scalatest.FunSuite
 
-import scala.collection.mutable
 import scala.io.Source
 
 class BigramsTest extends FunSuite {
   test("Bigrams.testMerge") {
-    val map1 = BigramsMap("hi" -> mutable.SortedMap("again" -> 10))
-    val map2 = BigramsMap("hi" -> mutable.SortedMap("there" -> 1), "my" -> mutable.SortedMap("god" -> 10))
+    val map1 = BigramsMap("hi" -> Map("again" -> 10))
+    val map2 = BigramsMap("hi" -> Map("there" -> 1), "my" -> Map("god" -> 10))
     val mapmerged = Bigrams.merge(map1, map2)
-    assert(mapmerged == BigramsMap("hi" -> mutable.SortedMap("again" -> 10, "there" -> 1), "my" -> mutable.SortedMap("god" -> 10)))
+    assert(mapmerged == BigramsMap("hi" -> Map("again" -> 10, "there" -> 1), "my" -> Map("god" -> 10)))
   }
 
   test("Bigrams.extractStatistics") {

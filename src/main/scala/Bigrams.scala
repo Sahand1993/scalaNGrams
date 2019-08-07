@@ -1,9 +1,9 @@
 import java.io.File
 
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.io.Source
 import scala.util.matching.Regex
+import scala.collection.immutable.SortedMap
 
 case class Bigrams(bigrams: BigramsMap) { // TODO: Find out why so slow
 
@@ -28,9 +28,9 @@ case class Bigrams(bigrams: BigramsMap) { // TODO: Find out why so slow
     throw new RuntimeException("Incorrect path")
   }
 
-  def getFreqs(word: String): Option[mutable.SortedMap[String, Int]] = {
+  def getFreqs(word: String): Option[Map[String, Int]] = {
     bigrams.get(word)
-  }
+  } // TODO: Sort results
 
   def mergeIn(bigramsIn: BigramsMap): Bigrams = {
     Bigrams(Bigrams.merge(bigrams, bigramsIn))
@@ -73,7 +73,7 @@ object Bigrams {
   def merge(bigrams1: BigramsMap, bigrams2: BigramsMap): BigramsMap = {
     BigramsMap(
     bigrams1.map ++ bigrams2.map
-      .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams1.getOrElse(entry1._1, mutable.SortedMap[String, Int]())
+      .map(entry1 => entry1._1 -> (entry1._2 ++ bigrams1.getOrElse(entry1._1, Map[String, Int]())
       .map(entry2 => entry2._1 -> (entry2._2 + entry1._2.getOrElse(entry2._1, 0))))))
   }
 

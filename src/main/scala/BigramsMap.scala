@@ -1,6 +1,5 @@
-import scala.collection.mutable
 
-case class BigramsMap(map: Map[String, mutable.SortedMap[String, Int]]) { // TODO replace with *immutable* sorted map
+case class BigramsMap(map: Map[String, Map[String, Int]]) { // TODO replace with *immutable* sorted map
   def addAll(bigrams: List[(String, String)]): BigramsMap = {
     if (bigrams.isEmpty) this
     else {
@@ -13,17 +12,17 @@ case class BigramsMap(map: Map[String, mutable.SortedMap[String, Int]]) { // TOD
           BigramsMap(map.updated(first, map(first) + (second -> 1))).addAll(bigrams.tail)
         }
       } else {
-        BigramsMap(map.updated(first, mutable.SortedMap(second -> 1))).addAll(bigrams.tail)
+        BigramsMap(map.updated(first, Map(second -> 1))).addAll(bigrams.tail)
       }
     }
   }
 
-  def get(key: String): Option[mutable.SortedMap[String, Int]] = map.get(key)
+  def get(key: String): Option[Map[String, Int]] = map.get(key)
 
-  def getOrElse[V1 >: mutable.SortedMap[String, Int]](key: String, default: V1): V1 = map.getOrElse(key, default)
+  def getOrElse[V1 >: Map[String, Int]](key: String, default: V1): V1 = map.getOrElse(key, default)
 }
 
 object BigramsMap {
-  def apply(elems: (String, mutable.SortedMap[String, Int])*): BigramsMap = BigramsMap(Map(elems: _*))
-  def apply(): BigramsMap = BigramsMap(Map[String, mutable.SortedMap[String, Int]]())
+  def apply(elems: (String, Map[String, Int])*): BigramsMap = BigramsMap(Map(elems: _*))
+  def apply(): BigramsMap = BigramsMap(Map[String, Map[String, Int]]())
 }
