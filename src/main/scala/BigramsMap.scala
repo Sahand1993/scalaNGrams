@@ -1,5 +1,6 @@
 
 case class BigramsMap(map: Map[String, Map[String, Int]]) { // TODO replace with *immutable* sorted map
+
   def addAll(bigrams: List[(String, String)]): BigramsMap = {
     if (bigrams.isEmpty) this
     else {
@@ -17,9 +18,29 @@ case class BigramsMap(map: Map[String, Map[String, Int]]) { // TODO replace with
     }
   }
 
-  def get(key: String): Option[Map[String, Int]] = map.get(key)
+  def getInOrderOfFrequency(key: String): Option[List[(String, Int)]] = map.get(key).map(sortOnInt)
 
   def getOrElse[V1 >: Map[String, Int]](key: String, default: V1): V1 = map.getOrElse(key, default)
+
+  def insertSorted(sortedList: List[(String, Int)], entry: (String, Int)): List[(String, Int)] = {
+    def helper(leftHalf: List[(String, Int)], rightHalf: List[(String, Int)]): List[(String, Int)] = {
+      if (leftHalf.isEmpty) rightHalf :+ entry
+      else if (entry._2 < leftHalf.head._2) helper(leftHalf.tail, rightHalf :+ leftHalf.head)
+      else rightHalf.:+(entry).++(leftHalf)
+    }
+    helper(sortedList, List())
+  }
+
+  def sortOnInt(stringToInt: Map[String, Int]): List[(String, Int)] = {
+    def sort(restOfMap: Map[String, Int], acc: List[(String, Int)]): List[(String, Int)] = {
+      if (restOfMap.isEmpty) acc
+      else {
+        val entryToSort: (String, Int) = restOfMap.head
+        sort(restOfMap.tail, insertSorted(acc, entryToSort))
+      }
+    }
+    sort(stringToInt, List[(String, Int)]())
+  }
 }
 
 object BigramsMap {

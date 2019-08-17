@@ -3,7 +3,6 @@ import java.io.File
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.matching.Regex
-import scala.collection.immutable.SortedMap
 
 case class Bigrams(bigrams: BigramsMap) { // TODO: Find out why so slow
 
@@ -28,9 +27,9 @@ case class Bigrams(bigrams: BigramsMap) { // TODO: Find out why so slow
     throw new RuntimeException("Incorrect path")
   }
 
-  def getFreqs(word: String): Option[Map[String, Int]] = {
-    bigrams.get(word)
-  } // TODO: Sort results
+  def getFreqsInOrderOfFrequency(word: String): Option[List[(String, Int)]] = {
+    bigrams.getInOrderOfFrequency(word)
+  }
 
   def mergeIn(bigramsIn: BigramsMap): Bigrams = {
     Bigrams(Bigrams.merge(bigrams, bigramsIn))

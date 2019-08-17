@@ -31,11 +31,13 @@ class BigramsTest extends FunSuite {
     assert(containsBigram(map, ("reported", "out"), 1))
     assert(containsBigram(map, ("active", "grain"), 1))
     assert(containsBigram(map, ("dlrs", "daily"), 2))
-    assert(map.get("a").get.size == 9)
+    assert(map.getInOrderOfFrequency("a").get.size == 9)
   }
 
   def containsBigram(map: BigramsMap, bigram: (String, String), freq: Int): Boolean = {
-    map.get(bigram._1).get.contains(bigram._2) && map.get(bigram._1).get(bigram._2) == freq // TODO: Clean up and enable map("key") call
+    map.getInOrderOfFrequency(bigram._1).get
+      .map((entry: (String, Int)) => entry._1)
+      .contains(bigram._2) && map.getInOrderOfFrequency(bigram._1).get.filter((entry: (String, Int)) => entry._1 == bigram._2).head._2 == freq // TODO: Clean up and enable map("key") call
   }
 
   test("Bigrams.getBigrams") {
